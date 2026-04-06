@@ -26,17 +26,17 @@ PROFILE = {
 client = Groq(api_key=GROQ_API_KEY)
 
 def fetch_repos():
-    headers = {}
+    headers = {"Accept": "application/vnd.github.v3+json"}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
-    url = f"https://api.github.com/users/{GITHUB_USERNAME}/repos"
+    url = f"https://api.github.com/users/{GITHUB_USERNAME}/repos?type=public&sort=updated"
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()
 
 def fetch_readme(repo_name):
-    headers = {}
+    headers = {"Accept": "application/vnd.github.v3+json"}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
@@ -91,13 +91,16 @@ def generate_openapi():
     paths = {
         "/profile": {
             "get": {
+                "tags": ["Profile"],
                 "summary": "Get profile information",
+                "description": "Returns my bio, skills, and social links.",
+                "operationId": "getProfile",
                 "responses": {
                     "200": {
-                        "description": "Profile information",
+                        "description": "Success",
                         "content": {
                             "application/json": {
-                                "example": PROFILE
+                                "schema": {"$ref": "#/components/schemas/Profile"}
                             }
                         }
                     }
@@ -106,13 +109,19 @@ def generate_openapi():
         },
         "/repos": {
             "get": {
+                "tags": ["Repositories"],
                 "summary": "List all public repositories",
+                "description": "Returns a list of all public GitHub projects with brief summaries.",
+                "operationId": "getRepos",
                 "responses": {
                     "200": {
-                        "description": "A list of repositories",
+                        "description": "Success",
                         "content": {
                             "application/json": {
-                                "example": []
+                                "schema": {
+                                    "type": "array",
+                                    "items": {"$ref": "#/components/schemas/Repository"}
+                                }
                             }
                         }
                     }
@@ -124,7 +133,7 @@ def generate_openapi():
     repo_list_example = []
 
     for repo in repos:
-        if repo["fork"]: continue
+        if repo.get("fork"): continue
 
         name = repo["name"]
         print(f"Processing {name}...")
@@ -140,12 +149,16 @@ def generate_openapi():
         # Detail path
         paths[f"/repos/{name}"] = {
             "get": {
+                "tags": ["Repositories"],
                 "summary": f"Get details for {name}",
+                "description": f"Returns detailed information (summary, tech stack, links) for the '{name}' repository.",
+                "operationId": f"getRepo_{name.replace('-', '_')}",
                 "responses": {
                     "200": {
-                        "description": f"Details for {name}",
+                        "description": "Success",
                         "content": {
                             "application/json": {
+                                "schema": {"$ref": "#/components/schemas/RepositoryDetail"},
                                 "example": {
                                     "name": name,
                                     "summary": analysis.get("summary", ""),
@@ -166,14 +179,19 @@ def generate_openapi():
             sub_path = sp.get("path", "").strip("/")
             if not sub_path: continue
 
+            operation_id = f"getRepo{name.replace('-', '_').capitalize()}{sub_path.capitalize()}"
             paths[f"/repos/{name}/{sub_path}"] = {
                 "get": {
+                    "tags": [name],
                     "summary": sp.get("description", f"{sub_path.capitalize()} for {name}"),
+                    "description": f"AI-generated sub-path exploring the '{sub_path}' of project '{name}'.",
+                    "operationId": operation_id,
                     "responses": {
                         "200": {
-                            "description": "Successful response",
+                            "description": "Success",
                             "content": {
                                 "application/json": {
+                                    "schema": {"type": "object"},
                                     "example": sp.get("mock_response", {})
                                 }
                             }
@@ -182,19 +200,70 @@ def generate_openapi():
                 }
             }
 
+    # Inject the actual example into /repos
     paths["/repos"]["get"]["responses"]["200"]["content"]["application/json"]["example"] = repo_list_example
 
     openapi_spec = {
         "openapi": "3.0.3",
         "info": {
             "title": "Nicholas Tritsaris Virtual Portfolio API",
-            "description": "A virtual API representing the portfolio and projects of Nicholas Tritsaris. Designed for GitBook integration.",
-            "version": "1.0.0"
+            "description": "A virtual API representing the portfolio and projects of Nicholas Tritsaris. This is a documentation-only API for presentation in GitBook.",
+            "version": "1.0.0",
+            "contact": {
+                "name": "Nicholas Tritsaris",
+                "url": "https://blueboop.is-a.dev/",
+                "email": "nicholas.tritsaris13@bk.ru"
+            }
         },
         "servers": [
             {"url": "https://api.nicholas-tritsaris.com", "description": "Virtual server for documentation purposes"}
         ],
-        "paths": paths
+        "tags": [
+            {"name": "Profile", "description": "Personal bio and contact info"},
+            {"name": "Repositories", "description": "Public projects and codebases"}
+        ],
+        "paths": paths,
+        "components": {
+            "schemas": {
+                "Profile": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "bio": {"type": "string"},
+                        "skills": {"type": "array", "items": {"type": "string"}},
+                        "socials": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "platform": {"type": "string"},
+                                    "url": {"type": "string"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "Repository": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "summary": {"type": "string"},
+                        "url": {"type": "string"}
+                    }
+                },
+                "RepositoryDetail": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "summary": {"type": "string"},
+                        "features": {"type": "array", "items": {"type": "string"}},
+                        "tech_stack": {"type": "array", "items": {"type": "string"}},
+                        "github_url": {"type": "string"},
+                        "mock_api_response": {"type": "object"}
+                    }
+                }
+            }
+        }
     }
 
     with open("openapi.yaml", "w") as f:
@@ -209,3 +278,5 @@ if __name__ == "__main__":
             print("openapi.yaml generated successfully!")
         except Exception as e:
             print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
