@@ -6,16 +6,16 @@ This repository is designed for **GitBook URL import** so the spec can render as
 
 ## What this repo does
 
-- Fetches all public repositories for `Nicholas-Tritsaris` using the GitHub API
-- Fetches each repository's `README.md`
-- Uses the Groq API to analyze each project and generate:
-  - A professional summary
-  - Key features
-  - Tech stack
-  - Mock API-style responses
-  - Suggested project-specific subpaths
-- Builds a single `openapi.yaml` file compliant with **OpenAPI 3.0.3**
-- Updates the spec automatically with GitHub Actions every 6 hours
+- Fetches all public repositories for `Nicholas-Tritsaris` using the GitHub API.
+- Fetches each repository's `README.md`.
+- Uses the Groq API (`llama3-70b-8192`) to analyze each project and generate:
+  - A professional summary.
+  - Key features.
+  - Tech stack used.
+  - Mock "API responses" for each project.
+  - Suggested project-specific subpaths.
+- Builds a single `openapi.yaml` file compliant with **OpenAPI 3.0.3**.
+- Updates the spec automatically with GitHub Actions every 6 hours.
 
 ## Generated API structure
 
@@ -23,10 +23,10 @@ The generated OpenAPI spec documents a portfolio as if it were an API.
 
 ### Core endpoints
 
-- `GET /profile` — bio, skills, social links
-- `GET /repos` — all public repositories with summaries
-- `GET /repos/{name}` — detailed information for one repository
-- `GET /repos/{name}/*` — AI-generated subpaths such as features, usage, architecture, setup, or showcase routes based on README content
+- `GET /profile` — bio, skills, social links (hardcoded in the script).
+- `GET /repos` — all public repositories with brief summaries.
+- `GET /repos/{name}` — detailed information (summary, tech stack, links) for a specific repo.
+- `GET /repos/{name}/*` — (e.g., `/repos/{name}/features`, `/repos/{name}/usage`) AI-generated specific sub-paths for each project based on its README content.
 
 ## Repository layout
 
@@ -44,46 +44,31 @@ The generated OpenAPI spec documents a portfolio as if it were an API.
 
 ## Required secrets
 
-Add the following repository secrets in:
-
-**Settings -> Secrets and variables -> Actions**
+Add the following repository secrets in: **Settings -> Secrets and variables -> Actions**
 
 ### Required
 
-- `GROQ_API_KEY` — your Groq API key
+- `GROQ_API_KEY` — your Groq API key.
 
 ### Provided automatically in GitHub Actions
 
-- `GITHUB_TOKEN` — GitHub Actions provides this automatically to workflows, and it can be explicitly passed into the job environment when needed
+- `GITHUB_TOKEN` — GitHub Actions provides this automatically to workflows to fetch repositories and push updates.
 
 ## Local usage
 
-Run the generator locally:
+To run the generator locally, you'll need to set the environment variables:
 
 ```bash
+export GROQ_API_KEY="your_key_here"
+export GITHUB_TOKEN="your_token_here" # optional for public repos, but recommended for rate limits
 python generate_openapi.py
 ```
 
-This will create or update:
-
-```text
-openapi.yaml
-```
+This will create or update: `openapi.yaml`
 
 ## GitHub Actions automation
 
-The workflow runs every 6 hours using this cron schedule:
-
-```yaml
-0 */6 * * *
-```
-
-It will:
-
-- Check out the repository
-- Install dependencies
-- Run `generate_openapi.py`
-- Commit and push any updated `openapi.yaml`
+The workflow runs every 6 hours using this cron schedule: `0 */6 * * *`. It will check out the repository, install dependencies, run `generate_openapi.py`, and commit and push any updated `openapi.yaml`.
 
 ## Connect to GitBook
 
@@ -91,19 +76,19 @@ GitBook supports adding an OpenAPI specification by **URL**, and when the spec i
 
 ### Steps
 
-1. Push this repository to GitHub
-2. Open `openapi.yaml` in the repository
-3. Click **Raw**
-4. Copy the raw file URL
-5. In GitBook, open the **OpenAPI** section
-6. Click **Add specification**
-7. Give it a name
-8. Choose **URL**
-9. Paste the raw `openapi.yaml` URL
+1. Push this repository to GitHub.
+2. Open `openapi.yaml` in the repository.
+3. Click **Raw**.
+4. Copy the raw file URL.
+5. In GitBook, open the **OpenAPI** section.
+6. Click **Add specification**.
+7. Give it a name.
+8. Choose **URL**.
+9. Paste the raw `openapi.yaml` URL.
 
 After that, GitBook will generate the API reference from your spec.
 
-## Example raw URL format
+### Example raw URL format
 
 ```text
 https://raw.githubusercontent.com/Nicholas-Tritsaris/nicholas-tritsaris-api/main/openapi.yaml
@@ -111,23 +96,11 @@ https://raw.githubusercontent.com/Nicholas-Tritsaris/nicholas-tritsaris-api/main
 
 ## Notes
 
-- This repository generates an API specification, not a live backend service
-- The OpenAPI document is intended for documentation and presentation
-- The quality of project summaries and generated subpaths depends on the available README content
-- GitBook can also be refreshed manually with **Check for updates** if you do not want to wait for the next sync cycle
-
-## Next steps
-
-- Create the repository on GitHub
-- Add the `GROQ_API_KEY` secret
-- Commit the generated files
-- Push to `main`
-- Connect the raw `openapi.yaml` URL to GitBook
-
-## Why this approach works
-
-GitBook supports OpenAPI specs from a hosted URL, and URL-linked specs are automatically checked for updates every 6 hours, which matches the scheduled GitHub Actions sync model for this repository.
+- This repository generates an API specification, not a live backend service.
+- The OpenAPI document is intended for documentation and presentation purposes.
+- The quality of project summaries and generated subpaths depends on the available README content.
+- GitBook can also be refreshed manually with **Check for updates** if you do not want to wait for the next sync cycle.
 
 ## License
 
-Choose the license that fits your portfolio and reuse goals.
+This project is open-source. Choose the license that fits your portfolio and reuse goals.
